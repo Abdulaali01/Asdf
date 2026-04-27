@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>كاميرا الإحداثيات</title>
+
+<style>
+body{
+font-family:Tahoma;
+background:#f2f2f2;
+margin:0;
+padding:20px;
+text-align:center;
+}
+h2{
+color:#222;
+}
+video,canvas,img{
+width:100%;
+max-width:420px;
+border-radius:12px;
+margin-top:10px;
+box-shadow:0 0 10px rgba(0,0,0,.2);
+}
+button{
+padding:12px 20px;
+margin:8px;
+border:none;
+border-radius:10px;
+background:#007bff;
+color:#fff;
+font-size:18px;
+cursor:pointer;
+}
+button:hover{
+background:#0056b3;
+}
+#info{
+margin-top:10px;
+font-size:18px;
+font-weight:bold;
+color:#111;
+line-height:1.8;
+}
+</style>
+</head>
+<body>
+
+<h2>📷 تصوير مع الإحداثيات والوقت</h2>
+
+<video id="video" autoplay playsinline></video>
+
+<br>
+<button onclick="startCamera()">تشغيل الكاميرا</button>
+<button onclick="takePhoto()">📸 تصوير</button>
+
+<div id="info"></div>
+
+<canvas id="canvas" style="display:none;"></canvas>
+
+<img id="result">
+
+<script>
+let lat = "";
+let lon = "";
+
+async function startCamera(){
+try{
+const stream = await navigator.mediaDevices.getUserMedia({
+video:{facingMode:"environment"},
+audio:false
+});
+document.getElementById("video").srcObject = stream;
+getLocation();
+}catch(e){
+alert("تعذر تشغيل الكاميرا");
+}
+}
+
+function getLocation(){
+navigator.geolocation.getCurrentPosition(pos=>{
+lat = pos.coords.latitude.toFixed(6);
+lon = pos.coords.longitude.toFixed(6);
+},err=>{
+alert("تعذر جلب الموقع");
+});
+}
+
+function takePhoto(){
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = video.videoWidth;
+canvas.height = video.videoHeight;
+
+ctx.drawImage(video,0,0);
+
+ctx.fillStyle="rgba(0,0,0,0.6)";
+ctx.fillRect(0,canvas.height-120,canvas.width,120);
+
+ctx.fillStyle="#fff";
+ctx.font="28px Tahoma";
+
+let now = new Date();
+let time = now.toLocaleString('ar-SA');
+
+ctx.fillText("📍 خط العرض: "+lat,20,canvas.height-80);
+ctx.fillText("📍 خط الطول: "+lon,20,canvas.height-45);
+ctx.fillText("🕒 "+time,20,canvas.height-10);
+
+let img = canvas.toDataURL("image/jpeg",1);
+document.getElementById("result").src = img;
+
+document.getElementById("info").innerHTML=
+"📍 "+lat+" , "+lon+"<br>🕒 "+time;
+}
+</script>
+
+</body>
+</html>
