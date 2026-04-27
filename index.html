@@ -3,105 +3,147 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>كاميرا الإحداثيات</title>
+<title>حفظ الإحداثيات وتصدير Excel</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
 body{
 margin:0;
-padding:15px;
-background:#111;
-font-family:Tahoma;
+padding:20px;
+font-family:tahoma;
+background:#f2f2f2;
 text-align:center;
-color:#fff;
 }
-video,img{
-width:100%;
-max-width:420px;
-border-radius:15px;
-margin-top:10px;
+h2{
+margin-bottom:20px;
 }
 button{
-padding:14px 22px;
-margin:8px;
-border:none;
-border-radius:12px;
-background:#00aaff;
-color:#fff;
+padding:14px 18px;
+margin:6px;
 font-size:18px;
+border:none;
+border-radius:10px;
 cursor:pointer;
+color:#fff;
 }
-button:hover{
-background:#0088cc;
+#getBtn{background:#007bff;}
+#expBtn{background:#28a745;}
+#delBtn{background:#dc3545;}
+
+table{
+width:100%;
+margin-top:20px;
+border-collapse:collapse;
+background:#fff;
+font-size:15px;
 }
-canvas{display:none;}
+th,td{
+border:1px solid #ccc;
+padding:8px;
+text-align:center;
+}
+th{
+background:#007bff;
+color:#fff;
+}
+.small{
+color:#666;
+font-size:14px;
+margin-top:8px;
+}
 </style>
 </head>
 <body>
 
-<h2>📷 تصوير وحفظ في الاستديو</h2>
+<h2>📍 سجل الإحداثيات</h2>
 
-<video id="video" autoplay playsinline></video>
+<button id="getBtn" onclick="getLocation()">📍 جلب الإحداثيات</button>
+<button id="expBtn" onclick="exportExcel()">📄 تصدير Excel</button>
+<button id="delBtn" onclick="clearData()">🗑 حذف الكل</button>
 
-<br>
-<button onclick="openCam()">تشغيل الكاميرا</button>
-<button onclick="capture()">📸 تصوير وحفظ</button>
+<div class="small">يتم الحفظ تلقائيًا حتى بعد إغلاق الصفحة</div>
 
-<img id="preview">
-
-<canvas id="canvas"></canvas>
+<table id="tbl">
+<thead>
+<tr>
+<th>#</th>
+<th>الإحداثيات</th>
+<th>وقت الجلب</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
 
 <script>
-let lat="",lon="";
+let data = JSON.parse(localStorage.getItem("gpsData") || "[]");
 
-async function openCam(){
-try{
-const stream=await navigator.mediaDevices.getUserMedia({
-video:{facingMode:"environment"},
-audio:false
-});
-document.getElementById("video").srcObject=stream;
+renderTable();
 
-navigator.geolocation.getCurrentPosition(pos=>{
-lat=pos.coords.latitude.toFixed(6);
-lon=pos.coords.longitude.toFixed(6);
-});
-}catch(e){
-alert("تعذر تشغيل الكاميرا");
-}
+function getLocation(){
+if(!navigator.geolocation){
+alert("الموقع غير مدعوم");
+return;
 }
 
-function capture(){
-const video=document.getElementById("video");
-const canvas=document.getElementById("canvas");
-const ctx=canvas.getContext("2d");
+navigator.geolocation.getCurrentPosition(function(pos){
 
-canvas.width=video.videoWidth;
-canvas.height=video.videoHeight;
+let lat = pos.coords.latitude.toFixed(6);
+let lon = pos.coords.longitude.toFixed(6);
 
-ctx.drawImage(video,0,0,canvas.width,canvas.height);
+let now = new Date();
+let time = now.toLocaleString("ar-SA");
 
-ctx.fillStyle="rgba(0,0,0,0.55)";
-ctx.fillRect(0,canvas.height-140,canvas.width,140);
+data.push({
+coords: lat + ", " + lon,
+time: time
+});
 
-ctx.fillStyle="#fff";
-ctx.font="26px Tahoma";
+localStorage.setItem("gpsData", JSON.stringify(data));
+renderTable();
 
-let now=new Date();
-let time=now.toLocaleString("ar-SA");
+}, function(){
+alert("تعذر جلب الموقع");
+});
+}
 
-ctx.fillText("📍 Latitude: "+lat,20,canvas.height-95);
-ctx.fillText("📍 Longitude: "+lon,20,canvas.height-60);
-ctx.fillText("🕒 "+time,20,canvas.height-25);
+function renderTable(){
+let tbody = document.querySelector("#tbl tbody");
+tbody.innerHTML = "";
 
-let image=canvas.toDataURL("image/jpeg",1);
+data.forEach((row,i)=>{
+tbody.innerHTML += `
+<tr>
+<td>${i+1}</td>
+<td>${row.coords}</td>
+<td>${row.time}</td>
+</tr>
+`;
+});
+}
 
-document.getElementById("preview").src=image;
+function exportExcel(){
 
-/* حفظ في الاستديو */
-let a=document.createElement("a");
-a.href=image;
-a.download="GPS_"+Date.now()+".jpg";
-a.click();
+let rows = [["م", "الإحداثيات", "وقت الجلب"]];
+
+data.forEach((r,i)=>{
+rows.push([i+1, r.coords, r.time]);
+});
+
+let ws = XLSX.utils.aoa_to_sheet(rows);
+let wb = XLSX.utils.book_new();
+
+XLSX.utils.book_append_sheet(wb, ws, "الإحداثيات");
+
+XLSX.writeFile(wb, "سجل_الإحداثيات.xlsx");
+}
+
+function clearData(){
+if(confirm("حذف جميع البيانات؟")){
+data = [];
+localStorage.removeItem("gpsData");
+renderTable();
+}
 }
 </script>
 
